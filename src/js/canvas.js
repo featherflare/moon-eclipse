@@ -34,18 +34,37 @@ addEventListener('resize', () => {
 })
 
 // Objects
-class Object {
+class Moon {
   constructor(color) {
     this.color = color
+    this.x = -12.533323356430465
+    this.y = 100
+    this.playhead = 1
   }
 
   draw() {
+    let num = 100
+    let rad = 100
+    c.fillStyle = this.color
     c.beginPath()
+    for (let i = 0; i < num; i++) {
+      let theta = (i / num) * 2 * Math.PI
+      this.x = rad * Math.sin(theta)
+      this.y = rad * Math.cos(theta)
+
+      if (theta > Math.PI) this.x *= this.playhead
+      c.lineTo(this.x, this.y)
+    }
     c.fill()
     c.closePath()
   }
 
-  update(playhead) {
+  update(playhead, index) {
+    if (index % 2 !== 0) {
+      this.playhead = playhead
+    } else {
+      this.playhead = 1
+    }
     this.draw()
   }
 }
@@ -56,7 +75,7 @@ function init() {
   objects = []
 
   for (let i = 0; i < 2; i++) {
-    objects.push(new Object(colors[i]))
+    objects.push(new Moon(colors[i]))
   }
 }
 
@@ -68,6 +87,8 @@ function animate(time) {
   const elapsedTime = (time - startTime) / 1000
 
   let playhead = Utils.clamp01(elapsedTime / settings.duration)
+  playhead = Utils.ease(playhead)
+  let p = playhead * 2 - 1
 
   c.fillStyle = `rgba(255,255,255)`
   c.fillRect(0, 0, canvas.width, canvas.height)
@@ -76,7 +97,7 @@ function animate(time) {
   c.translate(innerWidth / 2, innerHeight / 2)
 
   objects.forEach((object, i) => {
-    object.update(playhead)
+    object.update(p, i)
   })
   c.restore()
 
