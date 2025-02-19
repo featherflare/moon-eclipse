@@ -5,7 +5,7 @@ const c = canvas.getContext('2d')
 
 const settings = {
   animate: true,
-  duration: 10,
+  duration: 3,
   dimensions: [1080, 1920],
   fps: 36,
 }
@@ -18,7 +18,47 @@ const mouse = {
   y: innerHeight / 2,
 }
 
-const colors = ['#ffffff', '#000000', '#FFF6E5', '#FF7F66']
+const colors = ['#ffffff', '#000000']
+
+let cols
+let rows
+let moonRad = 40
+cols = (canvas.width / moonRad) * 1.2
+rows = (canvas.height / moonRad) * 1.5
+let grid = []
+let w = canvas.width / cols
+
+// Compute center
+const centerX = canvas.width / 2
+const centerY = canvas.height / 2
+
+// Compute max distance (diagonal distance from center to a corner)
+const maxDist = Utils.distance(centerX, centerY, 0, 0)
+
+// Create grid positions
+for (let i = 0; i < cols; i++) {
+  for (let j = 0; j < rows; j++) {
+    let x =
+      (canvas.width / cols) * i +
+      canvas.width / cols / 2 +
+      -moonRad / 1 +
+      (moonRad / 5) * i
+    let y =
+      (canvas.height / rows) * j + canvas.height / rows / 2 + (moonRad / 5) * j
+
+    let offset = j / cols
+
+    let dist = Utils.distance(centerX, centerY, x, y) / maxDist
+    let angle = (Math.atan2(y - centerY, x - centerX) / Math.PI + 1) / 1
+
+    offset = (dist * 1 + angle * 0.5) % 1
+
+    if (j % 2 !== 0) {
+      x += moonRad / 2
+    }
+    grid.push({ x, y, offset })
+  }
+}
 
 // Event Listeners
 addEventListener('mousemove', (event) => {
@@ -35,48 +75,76 @@ addEventListener('resize', () => {
 
 // Objects
 class Moon {
-  constructor(color) {
-    this.color = color
-    this.x = -12.533323356430465
-    this.y = 100
+  constructor(x, y, num, rad, offset) {
+    this.x = x
+    this.y = y
     this.playhead = 1
+    this.num = num
+    this.rad = rad
+    this.offset = offset
   }
 
   draw() {
-    let num = 100
-    let rad = 100
-    c.fillStyle = this.color
-    c.beginPath()
-    for (let i = 0; i < num; i++) {
-      let theta = (i / num) * 2 * Math.PI
-      this.x = rad * Math.sin(theta)
-      this.y = rad * Math.cos(theta)
+    let color1, color2
+    this.playhead = (this.playhead + this.offset) % 1
+    let p = this.playhead * 2
 
-      if (theta > Math.PI) this.x *= this.playhead
-      c.lineTo(this.x, this.y)
+    if (p < 1) {
+      color1 = colors[0]
+      color2 = colors[1]
+    } else {
+      color1 = colors[1]
+      color2 = colors[0]
+      p = p - 1
+    }
+
+    c.save()
+    c.translate(this.x, this.y)
+
+    c.fillStyle = color1
+    c.beginPath()
+    for (let i = 0; i < this.num; i++) {
+      let theta = (i / this.num) * 2 * Math.PI
+      let x = this.rad * Math.sin(theta)
+      let y = this.rad * Math.cos(theta)
+
+      c.lineTo(x, y)
+    }
+    c.fill()
+
+    c.fillStyle = color2
+    c.beginPath()
+
+    p = p * 2 - 1
+
+    for (let i = 0; i < this.num; i++) {
+      let theta = (i / this.num) * 2 * Math.PI
+      let x = this.rad * Math.sin(theta)
+      let y = this.rad * Math.cos(theta)
+
+      if (theta > Math.PI) x *= p
+      c.lineTo(x, y)
     }
     c.fill()
     c.closePath()
+
+    c.restore()
   }
 
-  update(playhead, index) {
-    if (index % 2 !== 0) {
-      this.playhead = playhead
-    } else {
-      this.playhead = 1
-    }
+  update(playhead) {
+    this.playhead = (playhead + this.offset) % 1
     this.draw()
   }
 }
 
 // Implementation
 let objects
-function init() {
-  objects = []
 
-  for (let i = 0; i < 2; i++) {
-    objects.push(new Moon(colors[i]))
-  }
+function init() {
+  let num = 100
+  let rad = moonRad / 2
+
+  objects = grid.map(({ x, y, offset }) => new Moon(x, y, num, rad, offset))
 }
 
 // Animation Loop
@@ -88,18 +156,13 @@ function animate(time) {
 
   let playhead = (elapsedTime % settings.duration) / settings.duration
   playhead = Utils.ease(playhead)
-  let p = playhead * 2 - 1
 
-  c.fillStyle = `rgba(255,255,255)`
+  c.fillStyle = `rgba(255,255,255,1)`
   c.fillRect(0, 0, canvas.width, canvas.height)
 
-  c.save()
-  c.translate(innerWidth / 2, innerHeight / 2)
-
-  objects.forEach((object, i) => {
-    object.update(p, i)
+  objects.forEach((object) => {
+    object.update(playhead)
   })
-  c.restore()
 
   if (settings.animate) {
     requestAnimationFrame(animate) // Continue the animation
