@@ -86,7 +86,7 @@ function animate(time) {
   if (!startTime) startTime = time
   const elapsedTime = (time - startTime) / 1000
 
-  let playhead = Utils.clamp01(elapsedTime / settings.duration)
+  let playhead = (elapsedTime % settings.duration) / settings.duration
   playhead = Utils.ease(playhead)
   let p = playhead * 2 - 1
 
@@ -101,7 +101,7 @@ function animate(time) {
   })
   c.restore()
 
-  if (settings.animate && elapsedTime < settings.duration) {
+  if (settings.animate) {
     requestAnimationFrame(animate) // Continue the animation
   }
 }
